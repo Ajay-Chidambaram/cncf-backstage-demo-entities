@@ -2,8 +2,8 @@ apiVersion: scaffolder.backstage.io/v1beta3
 # https://backstage.io/docs/features/software-catalog/descriptor-format#kind-template
 kind: Template
 metadata:
-  name: xplane
-  title: xplane - AWS
+  name: s3
+  title: S3 - Xplane
   description: A xplane template for deploying infrastructure using crossplane
 spec:
   owner: user:guest
