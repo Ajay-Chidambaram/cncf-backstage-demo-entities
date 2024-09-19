@@ -1,0 +1,183 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+# https://backstage.io/docs/features/software-catalog/descriptor-format#kind-template
+kind: Template
+metadata:
+  name: xplane
+  title: xplane - AWS
+  description: A xplane template for deploying infrastructure using crossplane
+spec:
+  owner: user:guest
+  type: service
+
+  # These parameters are used to generate the input form in the frontend, and are
+  # used to gather input data for the execution of the template.
+  parameters:
+  - title: Onboarding xplane Blueprints
+    required:
+    - name
+    - description
+    - branchName
+    properties:
+      name:
+        title: Name
+        type: string
+        description: Unique name of the component
+        ui:autofocus: true
+        ui:options:
+          rows: 5
+      branchName:
+        title: branchName
+        type: string
+        description: Unique name of the branch
+        ui:autofocus: true
+        ui:options:
+          rows: 5
+      description:
+        title: Description
+        type: string
+        description: Description of the component
+        ui:autofocus: false
+        ui:options:
+          rows: 5
+      policies:
+        title: Select required Policies
+        type: array
+        items:
+          type: string
+          enum:
+          - 'EC2 Policies'
+          - 'Tagging Policies'
+        uniqueItems: true
+        ui:widget: checkboxes
+
+    dependencies:
+      policies:
+        allOf:
+        # For EC2 policies
+        - if:
+            properties:
+              policies:
+                contains:
+                  enum: ['EC2 Policies']
+          then:
+            properties:
+              restricted_ec2_instance_types:
+                title: Restricted Instance types
+                type: string
+                default: xlarge
+                description: Specifiy restricted EC2 instance types for your resources in regex format
+            required:
+            - restricted_ec2_instance_types
+
+        # For Tagging policies
+        - if:
+            properties:
+              policies:
+                contains:
+                  enum: ['Tagging Policies']
+          then:
+            properties:
+              allowed_billing_tags:
+                title: Required Billing Tags
+                type: array
+                description: Specifiy required Billing tags for your resources
+                minItems: 0
+                ui:options:
+                  rows: 5
+                  addable: true
+                  orderable: true
+                  removable: true
+                items:
+                  type: string
+            required:
+            - allowed_billing_tags
+
+  - title: SCM Location
+    required:
+    - repoUrl
+    properties:
+      repoUrl:
+        title: Repository Location
+        type: string
+        ui:field: RepoUrlPicker
+        ui:options:
+          allowedHosts:
+          - github.com
+
+  # These steps are executed in the scaffolder backend, using data that we gathered
+  # via the parameters above.
+  steps:
+  # Each step executes an action, in this case one templates files into the working directory.
+  - id: fetch-application
+    name: Fetch Argo Application
+    action: fetch:template
+    input:
+      url: ./application
+      targetPath: ./app
+      values:
+        name: ${{ parameters.name }}
+        githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+        githubRepo: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+  - name: Rename Argo app file
+    action: fs:rename
+    input:
+      files:
+      - from: ./app/application.yaml
+        to: ./app/${{ parameters.name }}.yaml
+        overwrite: true
+
+  # This step publishes the contents of the working directory to GitHub.
+  - id: pull-request
+    name: App-of-Apps PR
+    action: publish:github:pull-request
+    input:
+      repoUrl: github.com?owner=Ajay-Chidambaram&repo=cncf-demo-app-of-apps
+      title: ${{ parameters.name }}
+      description: ${{ parameters.description }}
+      branchName: ${{ parameters.branchName }}
+      targetBranchName: "main"
+      targetPath: target
+      sourcePath: ./app
+
+  - id: fetch-base
+    name: Fetch Base
+    action: fetch:template
+    input:
+      url: ./s3_tpl
+      targetPath: ./xp
+      values:
+        name: ${{ parameters.name }}
+        githubOrg: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+        githubRepo: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+  - id: publish
+    name: Publish
+    action: publish:github
+    input:
+      allowedHosts: ['github.com']
+      description: ${{ parameters.description }}
+      repoUrl: ${{ parameters.repoUrl }}
+      repoVisibility: 'public'
+      defaultBranch: main
+      sourcePath: ./xp
+      repoVariables:
+        tags_enabled: ${{ ('Tagging Policies' in  parameters.policies) | string }}
+        allowed_billing_tags: ${{ parameters.allowed_billing_tags | dump }}
+
+  # The final step is to register our new component in the catalog.
+  - id: register
+    name: Register
+    action: catalog:register
+    input:
+      repoContentsUrl: ${{ steps['publish'].output.repoContentsUrl }}
+      catalogInfoPath: '/catalog-info.yaml'
+
+  # Outputs are displayed to the user after a successful execution of the template.
+  output:
+    links:
+    - title: Repository
+      url: ${{ steps['publish'].output.remoteUrl }}
+    - title: Open in catalog
+      icon: catalog
+      entityRef: ${{ steps['register'].output.entityRef }}

@@ -1,0 +1,44 @@
+# https://backstage.io/docs/features/software-catalog/descriptor-format#kind-system
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: janet
+  description: |
+    Employee-Information application
+spec:
+  owner: appdev
+---
+# https://backstage.io/docs/features/software-catalog/descriptor-format#kind-component
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: janet-frontend
+  description: |
+    The frontend for the janet application.
+  tags:
+  - appdev
+  - frontend
+  - react
+spec:
+  type: website
+  lifecycle: experimental
+  owner: appdev
+  system: janet
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: janet-backend
+  description: |
+    The backend for the Janet application.
+  tags:
+  - appdev
+  - backend
+  - nodejs
+spec:
+  type: service
+  lifecycle: experimental
+  owner: appdev
+  system: janet
+---

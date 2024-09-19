@@ -1,0 +1,27 @@
+# https://backstage.io/docs/features/software-catalog/descriptor-format#kind-system
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: sandbox
+  description: |
+    Sandbox environment
+spec:
+  owner: devops
+---
+# https://backstage.io/docs/features/software-catalog/descriptor-format#kind-component
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: k8s-cluster
+  description: |
+    The Kubernetes cluster for the Sandbox environment.
+  tags:
+  - devops
+  - kubernetes
+  - cluster
+  - aws
+spec:
+  type: service
+  lifecycle: experimental
+  owner: devops
+  system: sandbox
