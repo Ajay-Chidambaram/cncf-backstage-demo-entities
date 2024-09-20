@@ -13,6 +13,8 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: janet-frontend
+  annotations:
+    backstage.io/kubernetes-id: janet-frontend
   description: |
     The frontend for the janet application.
   tags:
